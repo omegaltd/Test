@@ -272,7 +272,7 @@ let mikhail={x:W-80,y:40,w:32,h:40};
 let nadyaNpc={x:W-80,y:40,w:32,h:40};
 let directorNpc={x:W-120,y:H/2-20,w:32,h:40};
 let nadyaQ5Npc={x:W/2-16,y:H/2-16,w:32,h:32};
-let tanyaNpc={x:188,y:H-172,w:32,h:40};
+let tanyaNpc={x:226,y:H-168,w:32,h:40};
 
 const houseH=100,houseW=170;
 const houseRects=[{x:590,y:10,w:houseW,h:houseH},{x:590,y:340,w:houseW,h:houseH}];
@@ -336,7 +336,7 @@ function getSpawnForEntry(toScene, fromScene){
   if(!sceneDoors)return{x:W/2-16,y:H/2-16};
   const entry=sceneDoors.find(d=>d.to===fromScene);
   if(entry&&entry.spawnX!==undefined&&entry.spawnY!==undefined){
-    return{x:Math.max(4,Math.min(W-player.w-4,entry.spawnX)),y:Math.max(4,Math.min(H-player.h-4,entry.spawnY));}
+    return{x:Math.max(4,Math.min(W-player.w-4,entry.spawnX)),y:Math.max(4,Math.min(H-player.h-4,entry.spawnY))};
   }
   return{x:W/2-16,y:H/2-16};
 }
@@ -799,9 +799,9 @@ function drawDirector(){
 }
 function drawTanya(){
   if(!SPR.tanya)return;
-  const a=SPR.tanya.w/SPR.tanya.h,h=72,w=h*a;
+  const a=SPR.tanya.w/SPR.tanya.h,h=76,w=h*a;
   const cx=tanyaNpc.x+tanyaNpc.w/2,by=tanyaNpc.y+tanyaNpc.h;
-  const r=drawSquishSprite(SPR.tanya,cx,by,w,h,0.7);
+  const r=drawSquishSprite(SPR.tanya,cx,by,w,h,0.4);
   drawPixelText('Таня',cx,r.y-8,6,'#ff80ab','center');
   if(rectsIntersect(player,expandRect(tanyaNpc,22))&&!dialog)drawPixelText('ДЕЙСТВИЕ',cx,r.y-18,6,'#0f0','center');
 }
@@ -918,12 +918,22 @@ function drawPixelPanel(x,y,w,h,sel){
 function drawDisclaimer(){
   drawAtticBackground();
   ctx.fillStyle='rgba(0,0,0,0.58)';ctx.fillRect(0,0,W,H);
-  drawPixelPanel(56,56,W-112,H-112,true);
-  drawPixelText('!!!ВНИМАНИЕ!!!',W/2,110,16,'#ffeb3b','center');
-  ctx.font=Math.max(6,Math.round(8*ts()))+"px 'Press Start 2P',monospace";
-  ctx.fillStyle='#eee';ctx.textAlign='left';
-  wrapText('Данная игра является выдумкой и любые совпадения являются случайными! Также игра не имеет цели кого либо оскорбить!',90,170,W-180,22);
-  drawPixelText('[ ENTER / ДЕЙСТВИЕ - далее ]',W/2,H-86,7,'#0f0','center');
+  drawPixelPanel(50,40,W-100,H-80,true);
+  drawPixelText('!!! ВНИМАНИЕ !!!',W/2,92,16,'#ffeb3b','center');
+  const lines=[
+    'Данная игра является выдумкой',
+    'и любые совпадения являются',
+    'случайными!',
+    '',
+    'Также игра не имеет цели',
+    'кого либо оскорбить!'
+  ];
+  lines.forEach((ln,i)=>{
+    if(ln)drawPixelText(ln,W/2,150+i*28,8,'#e8d5b7','center');
+  });
+  ctx.save();ctx.globalAlpha=0.55+0.45*Math.sin(animTime*3);
+  drawPixelText('[ ENTER / ДЕЙСТВИЕ ]',W/2,H-78,7,'#0f0','center');
+  ctx.restore();
 }
 function drawTitleScreen(){
   drawAtticBackground();
@@ -1176,73 +1186,97 @@ function drawFloor3(){
   else if(q5Started&&!q5Complete)drawNadyaQ5();
   drawPlayer();
 }
-function drawKhrushchevka(x,baseY,w,floors,tone){
-  const floorH=22,roofH=10,h=floors*floorH+8,y=baseY-h;
-  ctx.fillStyle='#4e342e';ctx.fillRect(x-4,y-roofH,w+8,roofH);
-  ctx.fillStyle='#3e2723';ctx.fillRect(x-4,y-3,w+8,4);
-  ctx.fillStyle=tone;ctx.fillRect(x,y,w,h);
+function drawKhrushchevka(x,y,w,h,tone){
+  const walls=['#c9b896','#b7b3a8','#d2c4a0','#a8a094'];
+  const wallsD=['#b39f78','#9a968c','#bba878','#8a8276'];
+  const roofs=['#6d5c4b','#5a5550','#7a6a4a','#4e4a46'];
+  const wall=walls[tone%4],wallD=wallsD[tone%4],roof=roofs[tone%4];
+  ctx.fillStyle=roof;ctx.fillRect(x-5,y,w+10,12);
+  ctx.fillStyle='#3e342c';ctx.fillRect(x-7,y+10,w+14,5);
+  ctx.fillStyle=wall;ctx.fillRect(x,y+15,w,h-15);
+  ctx.fillStyle=wallD;ctx.fillRect(x,y+15,5,h-15);ctx.fillRect(x+w-5,y+15,5,h-15);
   ctx.fillStyle='rgba(0,0,0,0.10)';
-  for(let px=x+18;px<x+w;px+=18)ctx.fillRect(px,y,1,h);
-  ctx.fillStyle='rgba(255,255,255,0.08)';
-  for(let f=1;f<floors;f++)ctx.fillRect(x,y+f*floorH,w,1);
-  const cols=Math.max(3,Math.floor((w-12)/16));
-  const padX=(w-cols*16)/2;
-  for(let f=0;f<floors;f++){
+  for(let i=1;i<5;i++)ctx.fillRect(x+i*(w/5),y+15,2,h-15);
+  const cols=5,rows=5,mX=10,mY=24,gapX=6,gapY=7;
+  const ww=Math.floor((w-mX*2-(cols-1)*gapX)/cols);
+  const wh=Math.floor((h-mY-20-(rows-1)*gapY)/rows);
+  for(let r=0;r<rows;r++){
     for(let c=0;c<cols;c++){
-      const wx=x+padX+c*16,wy=y+5+f*floorH;
-      const lit=hiQ()&&pseudoRandom(wx,f*17+c)>0.68;
-      ctx.fillStyle='#37474f';ctx.fillRect(wx,wy,11,14);
-      ctx.fillStyle=lit?'#ffe082':'#81d4fa';ctx.fillRect(wx+1,wy+1,9,12);
+      const wx=x+mX+c*(ww+gapX),wy=y+mY+r*(wh+gapY);
+      const lit=hiQ()&&pseudoRandom(x+c*3,y+r*5+Math.floor(animTime*0.12))>0.74;
+      ctx.fillStyle='#3e3428';ctx.fillRect(wx-1,wy-1,ww+2,wh+2);
+      ctx.fillStyle=lit?'#ffe082':'#6bb8d6';ctx.fillRect(wx,wy,ww,wh);
       if(hiQ()){
-        ctx.strokeStyle='rgba(255,255,255,0.28)';ctx.lineWidth=1;
-        ctx.beginPath();ctx.moveTo(wx+6,wy+1);ctx.lineTo(wx+6,wy+13);
-        ctx.moveTo(wx+1,wy+7);ctx.lineTo(wx+10,wy+7);ctx.stroke();
+        ctx.strokeStyle='rgba(255,255,255,0.22)';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(wx+ww/2,wy);ctx.lineTo(wx+ww/2,wy+wh);
+        ctx.moveTo(wx,wy+wh/2);ctx.lineTo(wx+ww,wy+wh/2);ctx.stroke();
       }
     }
   }
-  ctx.fillStyle='#455a64';ctx.fillRect(x+w/2-11,baseY-24,22,4);
-  ctx.fillStyle='#263238';ctx.fillRect(x+w/2-8,baseY-20,16,20);
+  const dw=18,dh=24;
+  ctx.fillStyle='#4e342e';ctx.fillRect(x+w/2-dw/2-2,y+h-dh-2,dw+4,dh+2);
+  ctx.fillStyle='#1a1410';ctx.fillRect(x+w/2-dw/2,y+h-dh,dw,dh);
 }
 function drawStreet(){
-  const sky=ctx.createLinearGradient(0,0,0,190);
-  sky.addColorStop(0,'#7eaac4');sky.addColorStop(0.55,'#b3cfe0');sky.addColorStop(1,'#cfd8dc');
-  ctx.fillStyle=sky;ctx.fillRect(0,0,W,200);
+  const sky=ctx.createLinearGradient(0,0,0,170);
+  sky.addColorStop(0,'#6eb6de');sky.addColorStop(0.55,'#b5d8ea');sky.addColorStop(1,'#d5dec8');
+  ctx.fillStyle=sky;ctx.fillRect(0,0,W,176);
+
+  ctx.fillStyle='#8aa0b0';
+  ctx.beginPath();ctx.ellipse(120,118,70,14,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(520,112,90,16,0,0,Math.PI*2);ctx.fill();
+
+  drawKhrushchevka(-40,42,168,136,0);
+  drawKhrushchevka(122,34,156,144,1);
+  drawKhrushchevka(274,46,172,132,2);
+  drawKhrushchevka(442,32,160,146,3);
+  drawKhrushchevka(598,40,178,138,0);
+  drawKhrushchevka(768,44,150,134,1);
+
+  ctx.fillStyle='#6a784e';ctx.fillRect(0,176,W,36);
   if(hiQ()){
-    ctx.fillStyle='rgba(255,255,255,0.85)';
-    ctx.beginPath();ctx.arc(120,46,18,0,Math.PI*2);ctx.arc(138,50,14,0,Math.PI*2);ctx.arc(104,52,12,0,Math.PI*2);ctx.fill();
-    ctx.beginPath();ctx.arc(520,38,16,0,Math.PI*2);ctx.arc(538,42,12,0,Math.PI*2);ctx.arc(506,44,11,0,Math.PI*2);ctx.fill();
-  }
-  const buildBase=206;
-  drawKhrushchevka(-30,buildBase,156,5,'#c4b7a6');
-  drawKhrushchevka(132,buildBase,128,5,'#b0bec5');
-  drawKhrushchevka(268,buildBase,168,6,'#d7ccc8');
-  drawKhrushchevka(448,buildBase,118,4,'#bcaaa4');
-  drawKhrushchevka(574,buildBase,150,5,'#cfd8dc');
-  drawKhrushchevka(730,buildBase,140,5,'#b0a090');
-  ctx.fillStyle='#8d8d8d';ctx.fillRect(0,206,W,40);
-  ctx.fillStyle='#9e9e9e';ctx.fillRect(0,206,W,3);
-  if(hiQ()){
-    ctx.strokeStyle='rgba(255,255,255,0.10)';
-    for(let x=0;x<W;x+=36){ctx.beginPath();ctx.moveTo(x,210);ctx.lineTo(x,242);ctx.stroke();}
-    ctx.fillStyle='#546e7a';ctx.beginPath();ctx.ellipse(390,226,10,6,0,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='#78909c';ctx.stroke();
-    ctx.fillStyle='#37474f';ctx.fillRect(250,214,18,12);ctx.fillRect(620,216,14,10);
-  }
-  ctx.fillStyle='#424242';ctx.fillRect(0,246,W,H-246);
-  ctx.fillStyle='#616161';ctx.fillRect(0,246,W,5);
-  ctx.fillStyle='#fdd835';
-  const midY=246+Math.floor((H-246)/2);
-  for(let x=8;x<W;x+=40)ctx.fillRect(x,midY,22,4);
-  ctx.fillStyle='rgba(255,255,255,0.18)';
-  ctx.fillRect(0,252,W,2);ctx.fillRect(0,H-10,W,2);
-  if(hiQ()){
-    for(let i=0;i<3;i++){
-      const lx=90+i*280;
-      ctx.fillStyle='#455a64';ctx.fillRect(lx,168,5,80);
-      ctx.fillStyle='#ffe082';ctx.beginPath();ctx.arc(lx+2,166,7,0,Math.PI*2);ctx.fill();
-      ctx.fillStyle='rgba(255,224,130,0.10)';ctx.beginPath();ctx.moveTo(lx+2,170);ctx.lineTo(lx-22,246);ctx.lineTo(lx+26,246);ctx.fill();
+    for(let i=0;i<22;i++){
+      ctx.fillStyle=pseudoRandom(i,3)>0.5?'#5a6844':'#7a8858';
+      ctx.fillRect(pseudoRandom(i,1)*W,180+pseudoRandom(i,2)*26,7,4);
     }
   }
+
+  ctx.fillStyle='#9aa0a6';ctx.fillRect(0,208,W,30);
+  ctx.fillStyle='#7e848c';
+  for(let x=0;x<W;x+=42)ctx.fillRect(x,208,40,30);
+  ctx.fillStyle='#c5c9ce';ctx.fillRect(0,208,W,3);
+  ctx.fillStyle='#5a6068';ctx.fillRect(0,234,W,7);
+
+  ctx.fillStyle='#3a3c42';ctx.fillRect(0,241,W,150);
+  if(hiQ()){
+    for(let i=0;i<48;i++){
+      ctx.fillStyle=pseudoRandom(i,7)>0.5?'#32343a':'#45474d';
+      ctx.fillRect(pseudoRandom(i,5)*W,248+pseudoRandom(i,6)*132,10,3);
+    }
+  }
+  ctx.fillStyle='#d0d0d0';ctx.fillRect(0,245,W,3);ctx.fillRect(0,384,W,3);
+  ctx.fillStyle='#ffeb3b';
+  const dashOff=Math.floor(animTime*36)%58;
+  for(let x=-58+dashOff;x<W;x+=58)ctx.fillRect(x,310,30,5);
+
+  if(hiQ()){
+    for(let i=0;i<6;i++){
+      ctx.fillStyle='#eceff1';ctx.fillRect(668,258+i*18,96,10);
+    }
+  }
+
+  ctx.fillStyle='#8e949c';ctx.fillRect(0,391,W,H-391);
+  ctx.fillStyle='#5a6068';ctx.fillRect(0,391,W,5);
+  ctx.fillStyle='#7a8088';
+  for(let x=0;x<W;x+=36)ctx.fillRect(x,410,34,2);
+
+  if(hiQ()){
+    [90,360,640].forEach(lx=>{
+      ctx.fillStyle='#455a64';ctx.fillRect(lx,188,5,54);
+      ctx.fillStyle='#eceff1';ctx.fillRect(lx-6,188,16,8);
+    });
+  }
+
   drawSpriteOnBg(SPR.shopBuilding,shopBuildingRect.x,shopBuildingRect.y,shopBuildingRect.w,shopBuildingRect.h,'#4caf50');
   drawPixelText('ПЯТЁРОЧКА',shopBuildingRect.x+shopBuildingRect.w/2,shopBuildingRect.y-8,7,'#fff200','center');
   drawPixelText('УЛ. ХУЕСОСОВА 67',W/2,22,8,'#37474f','center');
@@ -1290,7 +1324,8 @@ function drawShop(){
     drawPixelText(PRICE_VODKA+'₽',shopItem.x+shopItem.w/2,by+bH+16,7,'#b71c1c','center');
     if(rectsIntersect(player,expandRect(shopItem,22))&&!dialog)drawPixelText('ДЕЙСТВИЕ',shopItem.x+shopItem.w/2,by-18,6,'#0a0','center');
   }
-  drawDoorsForScene('shop');drawTanya();drawPlayer();
+  drawTanya();
+  drawDoorsForScene('shop');drawPlayer();
 }
 function drawHUD(){
   ctx.fillStyle='rgba(0,0,0,0.55)';ctx.fillRect(8,8,260,52);
@@ -1797,7 +1832,7 @@ window.addEventListener('keydown',e=>{
     else if(uiMode==='pause')resumePlay();
     else if(uiMode==='settings')closeSettings();
     else if(uiMode==='shop')uiMode='title';
-    else if(uiMode==='disclaimer')uiMode='title';
+    else if(uiMode==='disclaimer'){uiMode='title';return;}
     return;
   }
   if(e.code==='KeyI'&&!e.repeat){
@@ -1881,7 +1916,7 @@ document.getElementById('invBtn').addEventListener('touchstart',e=>{e.preventDef
 let lastTime=0;
 function gameLoop(ts){
   const dt=Math.min((ts-lastTime)/1000,0.05)||0;lastTime=ts;animTime+=dt;
-  if(uiMode==='title'||uiMode==='shop'||uiMode==='settings'||uiMode==='pause')updateUiNav(dt);
+  if(uiMode==='title'||uiMode==='shop'||uiMode==='settings'||uiMode==='pause'||uiMode==='disclaimer')updateUiNav(dt);
   if(uiMode==='play'){
     updateDialogTyping(dt);
     if(battle)updateBattle(dt);
@@ -1902,4 +1937,4 @@ function gameLoop(ts){
 requestAnimationFrame(gameLoop);
 </script>
 </body>
- </html>
+</html>
