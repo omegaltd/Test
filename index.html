@@ -88,6 +88,41 @@
 <audio id="sfxVictory"></audio>
 <script src="sprites.js"></script>
 <script>
+// DEV: 0 = выкл, 37 = вкл (или набери 37 на дисклеймере / в меню)
+let devmod=37;
+const DEV_CODE=37;
+let devCodeBuf='';
+let devPanelOpen=false;
+let devFlash=0;
+function isDev(){return devmod===DEV_CODE;}
+function applyDevMode(){
+  player.speed=isDev()?440:220;
+  if(isDev())money=999999;
+}
+function setDevMode(on){
+  devmod=on?DEV_CODE:0;
+  devPanelOpen=false;
+  applyDevMode();
+  devFlash=2.2;
+}
+function feedDevCode(ch){
+  if(!/^\d$/.test(ch))return;
+  devCodeBuf=(devCodeBuf+ch).slice(-4);
+  if(devCodeBuf.endsWith(String(DEV_CODE))){
+    setDevMode(!isDev());
+    devCodeBuf='';
+  }
+}
+function giveDevItem(n){
+  if(!isDev())return;
+  if(n===1)hasVodka=true;
+  else if(n===2)hasGoldChicushka=true;
+  else if(n===3)q5Started=true;
+  else if(n===4){q5Started=true;q5Complete=false;}
+  else if(n===5){hasVodka=true;hasGoldChicushka=true;q5Started=true;q5Complete=false;money=999999;}
+  saveGame();
+}
+
 const audioMini=document.getElementById('audioMini');
 const audioMiniText=document.getElementById('audioMiniText');
 const audioZipInput=document.getElementById('audioZipInput');
@@ -272,13 +307,13 @@ let mikhail={x:W-80,y:40,w:32,h:40};
 let nadyaNpc={x:W-80,y:40,w:32,h:40};
 let directorNpc={x:W-120,y:H/2-20,w:32,h:40};
 let nadyaQ5Npc={x:W/2-16,y:H/2-16,w:32,h:32};
-let tanyaNpc={x:226,y:H-168,w:32,h:40};
+let tanyaNpc={x:228,y:H-198,w:28,h:36};
 
 const houseH=100,houseW=170;
 const houseRects=[{x:590,y:10,w:houseW,h:houseH},{x:590,y:340,w:houseW,h:houseH}];
 const shopAspect=SPR.shopBuilding.w/SPR.shopBuilding.h;
-const shopBuildH=140,shopBuildW=shopBuildH*shopAspect;
-const shopBuildingRect={x:40,y:H/2-shopBuildH/2,w:shopBuildW,h:shopBuildH};
+const shopBuildH=118,shopBuildW=shopBuildH*shopAspect;
+const shopBuildingRect={x:16,y:328,w:shopBuildW,h:shopBuildH};
 const TURNSTILE_COLOR='#2b2f38',TURNSTILE_POST_H=50;
 const TURNSTILE_X=W/2,TURNSTILE_POST_TOP=H-100,TURNSTILE_POST_BOT=TURNSTILE_POST_TOP+TURNSTILE_POST_H;
 const FENCE_WIDTH=4,FENCE_X=TURNSTILE_X-FENCE_WIDTH/2;
@@ -304,11 +339,11 @@ const doors={
     {rect:{x:756,y:200,w:24,h:80},label:'КОРИДОР',to:'corridor',spawnX:710, spawnY:240}
   ],
   street:[
-    {rect:{x:756,y:200,w:24,h:80},label:'КОЛЛЕДЖ',to:'foyer',spawnX:710, spawnY:240},
-    {rect:shopBuildingRect,to:'shop',draw:false,spawnX:shopBuildingRect.x+shopBuildingRect.w/2-16, spawnY:shopBuildingRect.y+shopBuildingRect.h+8}
+    {rect:{x:756,y:330,w:24,h:90},label:'КОЛЛЕДЖ',to:'foyer',spawnX:700, spawnY:350},
+    {rect:shopBuildingRect,to:'shop',draw:false,spawnX:shopBuildingRect.x+shopBuildingRect.w+10, spawnY:shopBuildingRect.y+shopBuildingRect.h-48}
   ],
   shop:[
-    {rect:{x:756,y:200,w:24,h:80},label:'УЛИЦА',to:'street',spawnX:710, spawnY:240}
+    {rect:{x:756,y:200,w:24,h:80},label:'УЛИЦА',to:'street',spawnX:710, spawnY:350}
   ],
   floor2:[
     {rect:{x:W/2-12,y:H-60,w:24,h:20},label:'ФОЙЕ',to:'foyer',spawnX:W/2-16, spawnY:H-100},
@@ -345,7 +380,7 @@ function switchSceneFrom(to){
   if(to==='floor3')playTrack(floor3WantedTrack(),false);
   else if(src==='floor3')playTrack(musicMain,false);
   const sp=getSpawnForEntry(to,src);player.x=sp.x;player.y=sp.y;
-  sceneCooldown=TRANSITION_COOLDOWN;touchVector.x=0;touchVector.y=0;inventoryOpen=false;saveGame();
+  sceneCooldown=TRANSITION_COOLDOWN;touchVector.x=0;touchVector.y=0;inventoryOpen=false;devPanelOpen=false;saveGame();
 }
 function pushPlayerAwayFrom(rect,dist){
   const rcx=rect.x+rect.w/2,rcy=rect.y+rect.h/2,pcx=player.x+player.w/2,pcy=player.y+player.h/2;
@@ -397,6 +432,7 @@ function loadGame(){
   }
 }
 loadGame();
+applyDevMode();
 if(scene==='floor3')wantedTrack=floor3WantedTrack();
 else if(uiMode==='title'||uiMode==='disclaimer')wantedTrack=musicAttic;
 
@@ -413,9 +449,10 @@ function resetMissionsOnly(){
   q4Started=false;q4NadyaDefeated=false;q4MikhailDead=false;q4Complete=false;
   q5Started=false;q5NadyaSpinning=false;q5Complete=false;q5RewardGiven=false;
   hasGoldChicushka=false;crowAnim={x:0,y:0,timer:0,phase:'idle'};nadyaQ5SpinTimer=0;
-  battle=null;dialog=null;floorMenu=null;inventoryOpen=false;scene='foyer';
+  battle=null;dialog=null;floorMenu=null;inventoryOpen=false;devPanelOpen=false;scene='foyer';
   const sp=getSpawnForEntry('foyer','street');player.x=sp.x;player.y=sp.y;
   try{localStorage.removeItem(SAVE_KEY);localStorage.removeItem(SAVE_KEY+'_mini');}catch(e){}
+  applyDevMode();
   saveGame();
 }
 function fullWipe(){
@@ -434,6 +471,7 @@ function getInventoryItems(){
   return items;
 }
 function toggleInventory(){
+  if(devPanelOpen){devPanelOpen=false;return;}
   if(uiMode!=='play'||battle||floorMenu)return;
   inventoryOpen=!inventoryOpen;
 }
@@ -444,7 +482,7 @@ function drawInventory(){
   ctx.fillStyle='rgba(0,0,0,0.78)';ctx.fillRect(0,0,W,H);
   drawPixelPanel(70,40,W-140,H-80,true);
   drawPixelText('ИНВЕНТАРЬ',W/2,78,14,'#0f0','center');
-  drawPixelText('RUB '+money,W/2,104,8,'#9f6','center');
+  drawPixelText(isDev()?'RUB INF':'RUB '+money,W/2,104,8,'#9f6','center');
   if(!items.length){
     drawPixelText('пусто',W/2,H/2,10,'#666','center');
   }else{
@@ -475,7 +513,7 @@ function updateDialogTyping(dt){
     while(dialog.timer>=dialog.speed&&dialog.shown<dialog.text.length){dialog.timer-=dialog.speed;dialog.shown++;}
   }
 }
-function openFloorMenu(){floorMenu={selected:0,navCooldown:0};inventoryOpen=false;}
+function openFloorMenu(){floorMenu={selected:0,navCooldown:0};inventoryOpen=false;devPanelOpen=false;}
 function closeFloorMenu(){floorMenu=null;pushPlayerAwayFrom({x:20,y:180,w:24,h:100},60);}
 function confirmFloorSelection(){
   if(!floorMenu)return;
@@ -491,17 +529,17 @@ function confirmFloorSelection(){
 }
 
 function startGameFromTitle(){
-  uiMode='play';inventoryOpen=false;
+  uiMode='play';inventoryOpen=false;devPanelOpen=false;
   playSceneMusic(false);
 }
 function goToTitleMenu(){
   saveGame();
-  uiMode='title';uiFrom='title';titleSel=1;pauseSel=0;inventoryOpen=false;
+  uiMode='title';uiFrom='title';titleSel=1;pauseSel=0;inventoryOpen=false;devPanelOpen=false;
   playTrack(musicAttic,false);
 }
 function openSettings(from){uiFrom=from;uiMode='settings';setTab=0;setRow=0;uiNavCd=0.2;}
 function closeSettings(){uiMode=uiFrom;saveSettings();}
-function openPause(){if(uiMode!=='play')return;inventoryOpen=false;uiMode='pause';pauseSel=0;}
+function openPause(){if(uiMode!=='play')return;inventoryOpen=false;devPanelOpen=false;uiMode='pause';pauseSel=0;}
 function resumePlay(){uiMode='play';}
 
 function handleInteract(){
@@ -510,6 +548,7 @@ function handleInteract(){
   if(uiMode==='pause'){confirmPause();return;}
   if(uiMode==='settings'){confirmSettings();return;}
   if(uiMode==='shop'){uiMode='title';return;}
+  if(devPanelOpen){devPanelOpen=false;return;}
   if(inventoryOpen){closeInventory();return;}
   if(battle){handleBattleAction();return;}
   if(floorMenu){confirmFloorSelection();return;}
@@ -574,7 +613,7 @@ function handleInteract(){
     if(rectsIntersect(player,expandRect(shopItem,22))){
       if(questComplete)return;
       else if(hasVodka)openDialog('У вас уже есть чикушка.',null);
-      else if(money>=PRICE_VODKA){openDialog('Вы купили чикушку за '+PRICE_VODKA+'₽!',()=>{money-=PRICE_VODKA;hasVodka=true;saveGame();});}
+      else if(isDev()||money>=PRICE_VODKA){openDialog('Вы купили чикушку за '+PRICE_VODKA+'₽!',()=>{if(!isDev())money-=PRICE_VODKA;hasVodka=true;saveGame();});}
       else openDialog('Недостаточно денег...',null);
       return;
     }
@@ -674,7 +713,8 @@ function confirmSettings(){
 
 function updateMovement(dt){
   if(sceneCooldown>0)sceneCooldown-=dt;
-  if(inventoryOpen)return;
+  player.speed=isDev()?440:220;
+  if(inventoryOpen||devPanelOpen)return;
   if(floorMenu){
     floorMenu.navCooldown-=dt;
     let dy=0;
@@ -915,6 +955,12 @@ function drawPixelPanel(x,y,w,h,sel){
   ctx.strokeStyle=sel?'#0f0':'#3a5a3a';ctx.lineWidth=sel?4:2;ctx.strokeRect(x,y,w,h);
   ctx.fillStyle='#000';ctx.fillRect(x+2,y+2,6,6);ctx.fillRect(x+w-8,y+2,6,6);ctx.fillRect(x+2,y+h-8,6,6);ctx.fillRect(x+w-8,y+h-8,6,6);
 }
+function drawDevFlashHint(){
+  if(devFlash<=0)return;
+  ctx.save();ctx.globalAlpha=Math.min(1,devFlash);
+  drawPixelText(isDev()?'DEV MODE ON':'DEV MODE OFF',W/2,H-70,8,isDev()?'#0f0':'#f66','center');
+  ctx.restore();
+}
 function drawDisclaimer(){
   drawAtticBackground();
   ctx.fillStyle='rgba(0,0,0,0.58)';ctx.fillRect(0,0,W,H);
@@ -934,6 +980,7 @@ function drawDisclaimer(){
   ctx.save();ctx.globalAlpha=0.55+0.45*Math.sin(animTime*3);
   drawPixelText('[ ENTER / ДЕЙСТВИЕ ]',W/2,H-78,7,'#0f0','center');
   ctx.restore();
+  drawDevFlashHint();
 }
 function drawTitleScreen(){
   drawAtticBackground();
@@ -953,6 +1000,7 @@ function drawTitleScreen(){
   });
   drawPixelText('WASD / стрелки ходить',W/2,H-48,6,'#888','center');
   drawPixelText('ENTER действие   I инвентарь',W/2,H-28,6,'#888','center');
+  drawDevFlashHint();
 }
 function drawShopSoon(){
   drawAtticBackground();
@@ -971,6 +1019,7 @@ function drawPauseOverlay(){
     drawPixelText(t,W/2,by+38,12,pauseSel===i?'#fff':'#aaa','center');
   });
   drawPixelText('вверх/вниз  /  ENTER',W/2,H-24,6,'#888','center');
+  drawDevFlashHint();
 }
 function drawSettingsOverlay(){
   ctx.fillStyle='rgba(0,0,0,0.82)';ctx.fillRect(0,0,W,H);
@@ -1218,68 +1267,72 @@ function drawKhrushchevka(x,y,w,h,tone){
   ctx.fillStyle='#1a1410';ctx.fillRect(x+w/2-dw/2,y+h-dh,dw,dh);
 }
 function drawStreet(){
-  const sky=ctx.createLinearGradient(0,0,0,170);
-  sky.addColorStop(0,'#6eb6de');sky.addColorStop(0.55,'#b5d8ea');sky.addColorStop(1,'#d5dec8');
-  ctx.fillStyle=sky;ctx.fillRect(0,0,W,176);
+  const sky=ctx.createLinearGradient(0,0,0,168);
+  sky.addColorStop(0,'#6aaed4');sky.addColorStop(0.6,'#b7d7e8');sky.addColorStop(1,'#d5d8c4');
+  ctx.fillStyle=sky;ctx.fillRect(0,0,W,168);
 
   ctx.fillStyle='#8aa0b0';
-  ctx.beginPath();ctx.ellipse(120,118,70,14,0,0,Math.PI*2);ctx.fill();
-  ctx.beginPath();ctx.ellipse(520,112,90,16,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(90,108,64,12,0,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.ellipse(430,102,80,13,0,0,Math.PI*2);ctx.fill();
 
-  drawKhrushchevka(-40,42,168,136,0);
-  drawKhrushchevka(122,34,156,144,1);
-  drawKhrushchevka(274,46,172,132,2);
-  drawKhrushchevka(442,32,160,146,3);
-  drawKhrushchevka(598,40,178,138,0);
-  drawKhrushchevka(768,44,150,134,1);
+  drawKhrushchevka(-36,18,150,150,0);
+  drawKhrushchevka(108,12,148,156,1);
+  drawKhrushchevka(250,20,154,148,2);
+  drawKhrushchevka(398,10,150,158,3);
+  drawKhrushchevka(542,16,156,152,0);
+  drawKhrushchevka(692,14,148,154,1);
 
-  ctx.fillStyle='#6a784e';ctx.fillRect(0,176,W,36);
+  ctx.fillStyle='#8d949c';ctx.fillRect(0,168,W,36);
+  ctx.fillStyle='#c5c9ce';ctx.fillRect(0,168,W,3);
+  ctx.fillStyle='#6a7178';
+  for(let x=0;x<W;x+=28)ctx.fillRect(x,188,22,3);
+  ctx.fillStyle='#5a6068';ctx.fillRect(0,200,W,8);
+
+  ctx.fillStyle='#3a3c42';ctx.fillRect(0,208,W,96);
   if(hiQ()){
-    for(let i=0;i<22;i++){
-      ctx.fillStyle=pseudoRandom(i,3)>0.5?'#5a6844':'#7a8858';
-      ctx.fillRect(pseudoRandom(i,1)*W,180+pseudoRandom(i,2)*26,7,4);
+    for(let i=0;i<40;i++){
+      ctx.fillStyle=pseudoRandom(i,9)>0.5?'#32343a':'#44464c';
+      ctx.fillRect(pseudoRandom(i,4)*W,214+pseudoRandom(i,8)*80,12,3);
     }
   }
-
-  ctx.fillStyle='#9aa0a6';ctx.fillRect(0,208,W,30);
-  ctx.fillStyle='#7e848c';
-  for(let x=0;x<W;x+=42)ctx.fillRect(x,208,40,30);
-  ctx.fillStyle='#c5c9ce';ctx.fillRect(0,208,W,3);
-  ctx.fillStyle='#5a6068';ctx.fillRect(0,234,W,7);
-
-  ctx.fillStyle='#3a3c42';ctx.fillRect(0,241,W,150);
-  if(hiQ()){
-    for(let i=0;i<48;i++){
-      ctx.fillStyle=pseudoRandom(i,7)>0.5?'#32343a':'#45474d';
-      ctx.fillRect(pseudoRandom(i,5)*W,248+pseudoRandom(i,6)*132,10,3);
-    }
-  }
-  ctx.fillStyle='#d0d0d0';ctx.fillRect(0,245,W,3);ctx.fillRect(0,384,W,3);
+  ctx.fillStyle='#d8d8d8';ctx.fillRect(0,210,W,3);ctx.fillRect(0,299,W,3);
   ctx.fillStyle='#ffeb3b';
-  const dashOff=Math.floor(animTime*36)%58;
-  for(let x=-58+dashOff;x<W;x+=58)ctx.fillRect(x,310,30,5);
+  const dashOff=Math.floor(animTime*40)%64;
+  for(let x=-64+dashOff;x<W;x+=64)ctx.fillRect(x,252,34,5);
 
   if(hiQ()){
-    for(let i=0;i<6;i++){
-      ctx.fillStyle='#eceff1';ctx.fillRect(668,258+i*18,96,10);
+    for(let i=0;i<8;i++){
+      ctx.fillStyle=i%2?'#eceff1':'#cfd8dc';
+      ctx.fillRect(668,214+i*10,110,8);
     }
   }
 
-  ctx.fillStyle='#8e949c';ctx.fillRect(0,391,W,H-391);
-  ctx.fillStyle='#5a6068';ctx.fillRect(0,391,W,5);
-  ctx.fillStyle='#7a8088';
-  for(let x=0;x<W;x+=36)ctx.fillRect(x,410,34,2);
+  ctx.fillStyle='#5a6068';ctx.fillRect(0,304,W,8);
+  ctx.fillStyle='#9aa0a6';ctx.fillRect(0,312,W,H-312);
+  ctx.fillStyle='#7e848c';
+  for(let y=312;y<H;y+=18)for(let x=0;x<W;x+=18){
+    if(((x+y)/18)%2)ctx.fillRect(x,y,18,18);
+  }
+  ctx.fillStyle='#c5c9ce';ctx.fillRect(0,312,W,3);
+
+  ctx.fillStyle='#607080';ctx.fillRect(640,318,160,162);
+  ctx.fillStyle='#4a5560';ctx.fillRect(640,318,160,10);
+  if(hiQ()){
+    for(let r=0;r<3;r++)for(let c=0;c<3;c++){
+      ctx.fillStyle='#81d4fa';ctx.fillRect(652+c*36,336+r*28,26,20);
+    }
+  }
 
   if(hiQ()){
-    [90,360,640].forEach(lx=>{
-      ctx.fillStyle='#455a64';ctx.fillRect(lx,188,5,54);
-      ctx.fillStyle='#eceff1';ctx.fillRect(lx-6,188,16,8);
+    [70,300,530].forEach(lx=>{
+      ctx.fillStyle='#455a64';ctx.fillRect(lx,176,5,28);
+      ctx.fillStyle='#eceff1';ctx.fillRect(lx-6,176,16,7);
     });
   }
 
   drawSpriteOnBg(SPR.shopBuilding,shopBuildingRect.x,shopBuildingRect.y,shopBuildingRect.w,shopBuildingRect.h,'#4caf50');
   drawPixelText('ПЯТЁРОЧКА',shopBuildingRect.x+shopBuildingRect.w/2,shopBuildingRect.y-8,7,'#fff200','center');
-  drawPixelText('УЛ. ХУЕСОСОВА 67',W/2,22,8,'#37474f','center');
+  drawPixelText('УЛ. ХУЕСОСОВА 67',W/2,20,8,'#37474f','center');
   drawDoorsForScene('street');drawPlayer();
 }
 function drawShop(){
@@ -1308,14 +1361,15 @@ function drawShop(){
       ctx.fillRect(sx+10,140+r*36,20,22);ctx.fillRect(sx+38,140+r*36,20,22);
     }
   }
-  ctx.fillStyle='#455a64';ctx.fillRect(200,H-100,W-400,28);
-  ctx.fillStyle='#37474f';ctx.fillRect(210,H-128,80,28);ctx.fillRect(W/2-40,H-128,80,28);ctx.fillRect(W-290,H-128,80,28);
-  drawPixelText('КАССА',W/2,H-108,7,'#eceff1','center');
   if(hiQ()){
     ctx.fillStyle='#ffeb3b';ctx.fillRect(0,64,W,16);
     drawPixelText('АКЦИЯ 2=3',W/2,76,6,'#c62828','center');
     ctx.fillStyle='rgba(255,255,200,0.08)';ctx.fillRect(0,80,W,20);
   }
+  drawTanya();
+  ctx.fillStyle='#455a64';ctx.fillRect(200,H-100,W-400,28);
+  ctx.fillStyle='#37474f';ctx.fillRect(210,H-128,80,28);ctx.fillRect(W/2-40,H-128,80,28);ctx.fillRect(W-290,H-128,80,28);
+  drawPixelText('КАССА',W/2,H-108,7,'#eceff1','center');
   if(!hasVodka&&!questComplete){
     const bA=SPR.bottle.w/SPR.bottle.h,bH=48,bW=bH*bA;
     const bx=shopItem.x+shopItem.w/2-bW/2,by=shopItem.y+shopItem.h-bH;
@@ -1324,12 +1378,30 @@ function drawShop(){
     drawPixelText(PRICE_VODKA+'₽',shopItem.x+shopItem.w/2,by+bH+16,7,'#b71c1c','center');
     if(rectsIntersect(player,expandRect(shopItem,22))&&!dialog)drawPixelText('ДЕЙСТВИЕ',shopItem.x+shopItem.w/2,by-18,6,'#0a0','center');
   }
-  drawTanya();
   drawDoorsForScene('shop');drawPlayer();
 }
+function drawDevPanel(){
+  if(!isDev()||!devPanelOpen)return;
+  ctx.fillStyle='rgba(0,0,0,0.72)';ctx.fillRect(0,0,W,H);
+  drawPixelPanel(90,50,W-180,H-100,true);
+  drawPixelText('DEV PANEL',W/2,88,14,'#0f0','center');
+  const rows=[
+    ['1','ЧИКУШКА'],
+    ['2','GOLD CHICUSHKA'],
+    ['3','КЛЮЧ 3 ЭТАЖ'],
+    ['4','СТВОЛ'],
+    ['5','ВСЕ ПРЕДМЕТЫ']
+  ];
+  rows.forEach((r,i)=>{
+    const y=130+i*48;
+    drawPixelPanel(140,y,W-280,40,false);
+    drawPixelText('['+r[0]+']  '+r[1],W/2,y+26,8,'#fff','center');
+  });
+  drawPixelText('F2 / ESC / ENTER - закрыть',W/2,H-70,6,'#888','center');
+}
 function drawHUD(){
-  ctx.fillStyle='rgba(0,0,0,0.55)';ctx.fillRect(8,8,260,52);
-  drawPixelText('RUB '+money,16,30,13,'#00ff00','left');
+  ctx.fillStyle='rgba(0,0,0,0.55)';ctx.fillRect(8,8,260,isDev()?68:52);
+  drawPixelText(isDev()?'RUB INF':'RUB '+money,16,30,13,isDev()?'#ffeb3b':'#00ff00','left');
   let q='';
   if(!questGiven)q='Найти Святослава (Кабинет №5)';
   else if(!hasVodka&&!questComplete)q='Купить чикушку в Пятёрочке';
@@ -1348,6 +1420,7 @@ function drawHUD(){
   else if(q5Complete&&!q5RewardGiven)q='Получить награду у директора!';
   else if(q5RewardGiven)q='Все задания выполнены!';
   if(q)drawPixelText(q,16,52,5,'#66ff66','left');
+  if(isDev())drawPixelText('DEV F2',16,68,5,'#ffeb3b','left');
   const n=getInventoryItems().length;
   ctx.fillStyle='rgba(0,0,0,0.55)';ctx.fillRect(W-168,8,160,28);
   drawPixelText('I ИНВЕНТАРЬ'+(n?' ('+n+')':''),W-160,26,6,'#9f6','left');
@@ -1373,7 +1446,7 @@ const NADYA_COMBOS=[[0],[1],[2],[3],[4],[0,4],[1,4],[0,1],[2,4],[0,1,4]];
 const NADYA2_COMBOS=[[0],[1],[2],[3],[4],[1,2],[1,4],[2,4],[0,4],[0,1]];
 const GHOST_MAX_HP=500;
 function startBattle(bossType){
-  currentBossType=bossType;inventoryOpen=false;
+  currentBossType=bossType;inventoryOpen=false;devPanelOpen=false;
   if(bossType==='nadya'||bossType==='nadya2')playTrack(musicNadya,true);
   else playTrack(musicBattle,true);
   const isNadya2=bossType==='nadya2',isMikhail=bossType==='mikhail';
@@ -1446,6 +1519,7 @@ function spawnGhostMiniSwarm(){
   }
 }
 function applyDamageToPlayer(dmg,bypassShield){
+  if(isDev())return;
   playSfx(sfxHit);
   if(!bypassShield&&battle.shield>0){if(dmg<=battle.shield){battle.shield-=dmg;return;}dmg-=battle.shield;battle.shield=0;}
   battle.playerHP-=dmg;
@@ -1625,7 +1699,7 @@ function handleBattleAction(){
   if(battle.phase==='target'){
     const t=battle.targetIndex;
     if(battle.pendingAction==='attack'){
-      let dmg=100+Math.floor(Math.random()*80);
+      let dmg=isDev()?99999:(100+Math.floor(Math.random()*80));
       if(t===0){battle.guardHP=Math.max(0,battle.guardHP-dmg);battle.message='Удар по Наде: '+dmg+' урона!';}
       else{battle.ghostHP=Math.max(0,battle.ghostHP-dmg);battle.message='Удар по духу: '+dmg+' урона!';if(battle.ghostHP<=0)battle.message='Дух Святослава упокоен!';}
       battle.pendingAction=null;if(checkBattleWin())return;startDodgePhase();
@@ -1642,6 +1716,7 @@ function handleBattleAction(){
       if(currentBossType==='nadya')dmg=80+Math.floor(Math.random()*60);
       if(isNadya2)dmg=100+Math.floor(Math.random()*80);
       if(isMikhail)dmg=999;
+      if(isDev())dmg=99999;
       if(isNadya2&&battle.guardHP<=0&&battle.ghostHP>0){battle.ghostHP=Math.max(0,battle.ghostHP-dmg);battle.message='Удар по духу: '+dmg+' урона!';}
       else{battle.guardHP=Math.max(0,battle.guardHP-dmg);battle.message='Вы ударили на '+dmg+' урона!';}
       if(checkBattleWin())return;startDodgePhase();
@@ -1798,7 +1873,7 @@ function drawPlayerHPBar(){
   ctx.fillStyle='#444';ctx.fillRect(pBX,pBY,pBW,18);
   ctx.fillStyle='#ffca28';ctx.fillRect(pBX,pBY,pBW*Math.max(0,battle.playerHP)/battle.playerMaxHP,18);
   ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.strokeRect(pBX,pBY,pBW,18);
-  drawPixelText('ИЛЬЯ HP: '+battle.playerHP+'/'+battle.playerMaxHP,pBX,pBY-6,7,'#fff','left');
+  drawPixelText('ИЛЬЯ HP: '+(isDev()?'INF':battle.playerHP+'/'+battle.playerMaxHP),pBX,pBY-6,7,'#fff','left');
   if(battle.shield>0)drawPixelText('ЩИТ: '+battle.shield,pBX+pBW+20,pBY+13,7,'#29b6f6','left');
 }
 
@@ -1812,7 +1887,7 @@ function drawWorld(){
   else if(scene==='floor3')drawFloor3();
   else if(scene==='street')drawStreet();
   else if(scene==='shop')drawShop();
-  drawHUD();drawDialog();drawInventory();
+  drawHUD();drawDialog();drawInventory();drawDevPanel();
 }
 
 function setKeyFromEvent(e,down){
@@ -1825,8 +1900,18 @@ function setKeyFromEvent(e,down){
 }
 window.addEventListener('keydown',e=>{
   setKeyFromEvent(e,true);
+  if(e.key>='0'&&e.key<='9'){
+    if(uiMode==='title'||uiMode==='disclaimer'||uiMode==='pause')feedDevCode(e.key);
+    else if(isDev()&&devPanelOpen&&uiMode==='play'){const n=+e.key;if(n>=1&&n<=5)giveDevItem(n);}
+  }
+  if(e.code==='F2'){
+    e.preventDefault();
+    if(isDev()&&uiMode==='play'&&!battle&&!dialog&&!floorMenu){inventoryOpen=false;devPanelOpen=!devPanelOpen;}
+    return;
+  }
   if(e.key==='Escape'){
     e.preventDefault();
+    if(devPanelOpen){devPanelOpen=false;return;}
     if(inventoryOpen){closeInventory();return;}
     if(uiMode==='play')openPause();
     else if(uiMode==='pause')resumePlay();
@@ -1902,6 +1987,7 @@ window.addEventListener('mouseup',joyEnd);
 document.getElementById('actionBtn').addEventListener('touchstart',e=>{e.preventDefault();handleInteract();},{passive:false});
 document.getElementById('actionBtn').addEventListener('click',()=>handleInteract());
 function onPauseBtn(){
+  if(devPanelOpen){devPanelOpen=false;return;}
   if(inventoryOpen){closeInventory();return;}
   if(uiMode==='play')openPause();
   else if(uiMode==='pause')resumePlay();
@@ -1916,6 +2002,8 @@ document.getElementById('invBtn').addEventListener('touchstart',e=>{e.preventDef
 let lastTime=0;
 function gameLoop(ts){
   const dt=Math.min((ts-lastTime)/1000,0.05)||0;lastTime=ts;animTime+=dt;
+  if(devFlash>0)devFlash-=dt;
+  if(isDev()&&uiMode==='play')money=999999;
   if(uiMode==='title'||uiMode==='shop'||uiMode==='settings'||uiMode==='pause'||uiMode==='disclaimer')updateUiNav(dt);
   if(uiMode==='play'){
     updateDialogTyping(dt);
